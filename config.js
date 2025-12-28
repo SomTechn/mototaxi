@@ -1,5 +1,5 @@
 // Configuración del backend de Apps Script
-const API_URL = 'https://script.google.com/macros/s/AKfycbzhm8H4Hap1lvsiujDqaMNOlMtCZnoq-pLIAUK4kfwZQl80tSCzsyqldbWPMBfwhhoD_A/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwmtPDR451BYZcQRR6Wjll7NW9u604-wb8vcn1T3zKA7dPkKmzvg0aQDNc1LILGkHGO/exec/exec';
 
 // Función helper para hacer llamadas al backend
 async function callBackend(action, params = {}) {
