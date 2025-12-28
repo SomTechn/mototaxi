@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solicitar Mototaxi</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px 20px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      margin-bottom: 5px;
+    }
+
+    .header p {
+      opacity: 0.9;
+      font-size: 14px;
+    }
+
+    .content {
+      padding: 25px;
+    }
+
+    .step {
+      display: none;
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    .step.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #333;
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 12px 15px;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 15px;
+      transition: all 0.3s;
+      font-family: inherit;
+    }
+
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    #map {
+      height: 300px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      border: 2px solid #e0e0e0;
+    }
+
+    .location-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 12px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-bottom: 15px;
+    }
+
+    .location-btn:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .location-btn:active {
+      transform: translateY(0);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-top: 10px;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-secondary {
+      background: white;
+      color: #667eea;
+      border: 2px solid #667eea;
+    }
+
+    .btn-secondary:hover {
+      background: #f8f9ff;
+    }
+
+    .info-card {
+      background: #f8f9ff;
+      border: 2px solid #e0e7ff;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #e0e7ff;
+    }
+
+    .info-row:last-child {
+      border-bottom: none;
+    }
+
+    .info-label {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .info-value {
+      color: #333;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .tarifa-display {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .tarifa-label {
+      font-size: 14px;
+      opacity: 0.9;
+      margin-bottom: 5px;
+    }
+
+    .tarifa-amount {
+      font-size: 36px;
+      font-weight: 700;
+    }
+
+    .success-icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 20px;
+      background: #10b981;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+
+    .status-pendiente {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .status-asignado {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .status-completado {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .alert {
+      padding: 12px 15px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+
+    .alert-info {
+      background: #dbeafe;
+      color: #1e40af;
+      border: 1px solid #93c5fd;
+    }
+
+    .alert-error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+    }
+
+    .coordenadas {
+      font-size: 12px;
+      color: #666;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🛵 Solicitar Mototaxi</h1>
+      <p>Rápido, seguro y confiable</p>
+    </div>
+
+    <div class="content">
+      <!-- PASO 1: Datos del cliente -->
+      <div id="step1" class="step active">
+        <h2 style="margin-bottom: 20px; color: #333;">Tus datos</h2>
+        
+        <div class="form-group">
+          <label for="nombre">Nombre completo</label>
+          <input type="text" id="nombre" placeholder="Ej: Juan Pérez" required>
+        </div>
+
+        <div class="form-group">
+          <label for="telefono">Teléfono</label>
+          <input type="tel" id="telefono" placeholder="Ej: 9999-9999" required>
+        </div>
+
+        <button class="btn" onclick="nextStep(2)">Continuar</button>
+      </div>
+
+      <!-- PASO 2: Ubicación origen -->
+      <div id="step2" class="step">
+        <h2 style="margin-bottom: 20px; color: #333;">Punto de recogida</h2>
+        
+        <div id="map"></div>
+        
+        <button class="location-btn" onclick="obtenerUbicacionActual('origen')">
+          <span>📍</span> Usar mi ubicación actual
+        </button>
+
+        <div class="form-group">
+          <label>Dirección detectada</label>
+          <input type="text" id="origenDireccion" placeholder="Buscando dirección..." readonly>
+          <div class="coordenadas" id="origenCoordenadas"></div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-secondary" onclick="prevStep(1)">Atrás</button>
+          <button class="btn" onclick="nextStep(3)" id="btnSiguienteOrigen" disabled>Continuar</button>
+        </div>
+      </div>
+
+      <!-- PASO 3: Ubicación destino -->
+      <div id="step3" class="step">
+        <h2 style="margin-bottom: 20px; color: #333;">¿A dónde vas?</h2>
+        
+        <div id="mapDestino"></div>
+        
+        <button class="location-btn" onclick="seleccionarEnMapa()">
+          <span>🗺️</span> Seleccionar en el mapa
+        </button>
+
+        <div class="form-group">
+          <label>Dirección de destino</label>
+          <input type="text" id="destinoDireccion" placeholder="Selecciona tu destino en el mapa" readonly>
+          <div class="coordenadas" id="destinoCoordenadas"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="comentarios">Comentarios adicionales (opcional)</label>
+          <textarea id="comentarios" placeholder="Ej: Casa de color azul, portón negro"></textarea>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-secondary" onclick="prevStep(2)">Atrás</button>
+          <button class="btn" onclick="calcularYMostrarTarifa()" id="btnCalcularTarifa" disabled>Calcular tarifa</button>
+        </div>
+      </div>
+
+      <!-- PASO 4: Confirmar y pagar -->
+      <div id="step4" class="step">
+        <h2 style="margin-bottom: 20px; color: #333;">Confirmar viaje</h2>
+        
+        <div class="info-card">
+          <div class="info-row">
+            <span class="info-label">Desde:</span>
+            <span class="info-value" id="resumenOrigen">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Hasta:</span>
+            <span class="info-value" id="resumenDestino">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Distancia:</span>
+            <span class="info-value" id="resumenDistancia">-</span>
+          </div>
+        </div>
+
+        <div class="tarifa-display">
+          <div class="tarifa-label">Tarifa estimada</div>
+          <div class="tarifa-amount">L <span id="tarifaCalculada">0</span></div>
+        </div>
+
+        <div class="form-group">
+          <label for="montoPago">¿Con cuánto vas a pagar?</label>
+          <input type="number" id="montoPago" placeholder="Ej: 100" min="0" step="0.01">
+          <div class="coordenadas" id="cambioDisplay"></div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-secondary" onclick="prevStep(3)">Atrás</button>
+          <button class="btn" onclick="solicitarViaje()" id="btnSolicitar">Solicitar mototaxi</button>
+        </div>
+      </div>
+
+      <!-- PASO 5: Confirmación -->
+      <div id="step5" class="step">
+        <div class="success-icon">✓</div>
+        
+        <h2 style="margin-bottom: 15px; color: #333; text-align: center;">¡Viaje solicitado!</h2>
+        <p style="text-align: center; color: #666; margin-bottom: 25px;">Tu mototaxi está en camino</p>
+
+        <div class="info-card">
+          <div class="info-row">
+            <span class="info-label">ID del viaje:</span>
+            <span class="info-value" id="viajeID">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Tarifa:</span>
+            <span class="info-value">L <span id="tarifaFinal">0</span></span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Tu pago:</span>
+            <span class="info-value">L <span id="pagoFinal">0</span></span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Cambio:</span>
+            <span class="info-value">L <span id="cambioFinal">0</span></span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Estado:</span>
+            <span class="info-value"><span id="estadoViaje" class="status-badge status-pendiente">Pendiente</span></span>
+          </div>
+        </div>
+
+        <button class="btn" onclick="location.reload()">Solicitar otro viaje</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    let map, mapDestino;
+    let markerOrigen, markerDestino;
+    let ubicacionOrigen = null;
+    let ubicacionDestino = null;
+    let tarifaCalculada = 0;
+    let distanciaTotal = 0;
+
+    // Inicializar mapa
+    function initMap() {
+      map = L.map('map').setView([14.0723, -87.1921], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+    }
+
+    function initMapDestino() {
+      mapDestino = L.map('mapDestino').setView([14.0723, -87.1921], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(mapDestino);
+
+      // Permitir selección en el mapa
+      mapDestino.on('click', function(e) {
+        setDestino(e.latlng.lat, e.latlng.lng);
+      });
+    }
+
+    function obtenerUbicacionActual(tipo) {
+      if (!navigator.geolocation) {
+        alert('Tu navegador no soporta geolocalización');
+        return;
+      }
+
+      document.getElementById('origenDireccion').value = 'Obteniendo ubicación...';
+
+      navigator.geolocation.getCurrentPosition(
+        function(position) {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          
+          ubicacionOrigen = { lat, lng };
+          
+          if (markerOrigen) {
+            map.removeLayer(markerOrigen);
+          }
+          
+          markerOrigen = L.marker([lat, lng]).addTo(map);
+          map.setView([lat, lng], 16);
+          
+          obtenerDireccion(lat, lng, 'origen');
+          document.getElementById('btnSiguienteOrigen').disabled = false;
+        },
+        function(error) {
+          alert('Error al obtener ubicación: ' + error.message);
+          document.getElementById('origenDireccion').value = '';
+        }
+      );
+    }
+
+    function seleccionarEnMapa() {
+      alert('Haz clic en el mapa para seleccionar tu destino');
+    }
+
+    function setDestino(lat, lng) {
+      ubicacionDestino = { lat, lng };
+      
+      if (markerDestino) {
+        mapDestino.removeLayer(markerDestino);
+      }
+      
+      markerDestino = L.marker([lat, lng]).addTo(mapDestino);
+      mapDestino.setView([lat, lng], 16);
+      
+      obtenerDireccion(lat, lng, 'destino');
+      document.getElementById('btnCalcularTarifa').disabled = false;
+    }
+
+    async function obtenerDireccion(lat, lng, tipo) {
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
+        );
+        const data = await response.json();
+        
+        const direccion = data.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        
+        if (tipo === 'origen') {
+          document.getElementById('origenDireccion').value = direccion;
+          document.getElementById('origenCoordenadas').textContent = 
+            `Coordenadas: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        } else {
+          document.getElementById('destinoDireccion').value = direccion;
+          document.getElementById('destinoCoordenadas').textContent = 
+            `Coordenadas: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        }
+      } catch (error) {
+        console.error('Error al obtener dirección:', error);
+        if (tipo === 'origen') {
+          document.getElementById('origenDireccion').value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        } else {
+          document.getElementById('destinoDireccion').value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        }
+      }
+    }
+
+    function calcularDistancia(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    function toRad(degrees) {
+      return degrees * (Math.PI / 180);
+    }
+
+    function calcularYMostrarTarifa() {
+      if (!ubicacionOrigen || !ubicacionDestino) {
+        alert('Por favor selecciona origen y destino');
+        return;
+      }
+
+      distanciaTotal = calcularDistancia(
+        ubicacionOrigen.lat,
+        ubicacionOrigen.lng,
+        ubicacionDestino.lat,
+        ubicacionDestino.lng
+      );
+
+      // Tarifa base + precio por km (ajustar según necesidad)
+      const TARIFA_BASE = 20;
+      const PRECIO_POR_KM = 8;
+      tarifaCalculada = TARIFA_BASE + (distanciaTotal * PRECIO_POR_KM);
+
+      document.getElementById('resumenOrigen').textContent = 
+        document.getElementById('origenDireccion').value.substring(0, 40) + '...';
+      document.getElementById('resumenDestino').textContent = 
+        document.getElementById('destinoDireccion').value.substring(0, 40) + '...';
+      document.getElementById('resumenDistancia').textContent = 
+        distanciaTotal.toFixed(2) + ' km';
+      document.getElementById('tarifaCalculada').textContent = 
+        tarifaCalculada.toFixed(2);
+
+      nextStep(4);
+    }
+
+    // Calcular cambio en tiempo real
+    document.addEventListener('DOMContentLoaded', function() {
+      const montoPagoInput = document.getElementById('montoPago');
+      if (montoPagoInput) {
+        montoPagoInput.addEventListener('input', function() {
+          const monto = parseFloat(this.value) || 0;
+          const cambio = monto - tarifaCalculada;
+          const cambioDisplay = document.getElementById('cambioDisplay');
+          
+          if (cambio < 0) {
+            cambioDisplay.textContent = '⚠️ El monto es menor que la tarifa';
+            cambioDisplay.style.color = '#dc2626';
+          } else {
+            cambioDisplay.textContent = `Tu cambio: L ${cambio.toFixed(2)}`;
+            cambioDisplay.style.color = '#059669';
+          }
+        });
+      }
+    });
+
+    async function solicitarViaje() {
+      const nombre = document.getElementById('nombre').value;
+      const telefono = document.getElementById('telefono').value;
+      const montoPago = parseFloat(document.getElementById('montoPago').value);
+      const comentarios = document.getElementById('comentarios').value;
+
+      if (!nombre || !telefono) {
+        alert('Por favor completa todos los campos obligatorios');
+        return;
+      }
+
+      if (montoPago < tarifaCalculada) {
+        alert('El monto de pago debe ser mayor o igual a la tarifa');
+        return;
+      }
+
+      const btnSolicitar = document.getElementById('btnSolicitar');
+      btnSolicitar.disabled = true;
+      btnSolicitar.innerHTML = '<span class="loading"></span> Procesando...';
+
+      try {
+        const datos = {
+          clienteNombre: nombre,
+          clienteTelefono: telefono,
+          origenLat: ubicacionOrigen.lat,
+          origenLng: ubicacionOrigen.lng,
+          origenDireccion: document.getElementById('origenDireccion').value,
+          destinoLat: ubicacionDestino.lat,
+          destinoLng: ubicacionDestino.lng,
+          destinoDireccion: document.getElementById('destinoDireccion').value,
+          distancia: distanciaTotal.toFixed(2),
+          montoPago: montoPago,
+          comentarios: comentarios
+        };
+
+        google.script.run
+          .withSuccessHandler(function(resultado) {
+            if (resultado.success) {
+              document.getElementById('viajeID').textContent = resultado.viajeID;
+              document.getElementById('tarifaFinal').textContent = resultado.tarifa.toFixed(2);
+              document.getElementById('pagoFinal').textContent = montoPago.toFixed(2);
+              document.getElementById('cambioFinal').textContent = resultado.cambio.toFixed(2);
+              
+              nextStep(5);
+              
+              // Verificar estado cada 5 segundos
+              setInterval(verificarEstado, 5000);
+            } else {
+              alert('Error: ' + resultado.error);
+              btnSolicitar.disabled = false;
+              btnSolicitar.textContent = 'Solicitar mototaxi';
+            }
+          })
+          .withFailureHandler(function(error) {
+            alert('Error al solicitar viaje: ' + error.message);
+            btnSolicitar.disabled = false;
+            btnSolicitar.textContent = 'Solicitar mototaxi';
+          })
+          .solicitarViaje(datos);
+      } catch (error) {
+        alert('Error: ' + error.message);
+        btnSolicitar.disabled = false;
+        btnSolicitar.textContent = 'Solicitar mototaxi';
+      }
+    }
+
+    function verificarEstado() {
+      const viajeID = document.getElementById('viajeID').textContent;
+      
+      google.script.run
+        .withSuccessHandler(function(resultado) {
+          if (resultado.success && resultado.viaje) {
+            const estado = resultado.viaje.estado;
+            const estadoBadge = document.getElementById('estadoViaje');
+            
+            estadoBadge.textContent = estado;
+            estadoBadge.className = 'status-badge';
+            
+            if (estado === 'Pendiente') {
+              estadoBadge.classList.add('status-pendiente');
+            } else if (estado === 'Asignado') {
+              estadoBadge.classList.add('status-asignado');
+            } else if (estado === 'Completado') {
+              estadoBadge.classList.add('status-completado');
+            }
+          }
+        })
+        .obtenerEstadoViaje(viajeID);
+    }
+
+    function nextStep(step) {
+      // Validación del paso 1
+      if (step === 2) {
+        const nombre = document.getElementById('nombre').value.trim();
+        const telefono = document.getElementById('telefono').value.trim();
+        
+        if (!nombre || !telefono) {
+          alert('Por favor completa tu nombre y teléfono');
+          return;
+        }
+      }
+      
+      document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+      document.getElementById('step' + step).classList.add('active');
+
+      if (step === 2 && !map) {
+        setTimeout(initMap, 100);
+      }
+      if (step === 3 && !mapDestino) {
+        setTimeout(initMapDestino, 100);
+      }
+    }
+
+    function prevStep(step) {
+      nextStep(step);
+    }
+  </script>
+</body>
+</html>
