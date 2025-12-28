@@ -436,17 +436,41 @@
   <div id="loginScreen" class="login-screen">
     <h2>🛵 Acceso Motoristas</h2>
     
-    <div class="form-group">
-      <label for="loginID">ID de Motorista</label>
-      <input type="text" id="loginID" placeholder="Ingresa tu ID">
+    <!-- Tabs para elegir método de login -->
+    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+      <button id="tabLoginID" class="btn" onclick="cambiarMetodoLogin('id')" style="flex: 1; background: #2563eb;">Con ID</button>
+      <button id="tabLoginAuth" class="btn btn-secondary" onclick="cambiarMetodoLogin('auth')" style="flex: 1;">Con Teléfono</button>
+    </div>
+    
+    <!-- Login con ID -->
+    <div id="loginConID">
+      <div class="form-group">
+        <label for="loginID">ID de Motorista</label>
+        <input type="text" id="loginID" placeholder="Ej: MOT-1234567890-123">
+      </div>
+
+      <button class="btn" onclick="iniciarSesion()">Iniciar sesión</button>
+    </div>
+    
+    <!-- Login con autenticación -->
+    <div id="loginConAuth" style="display: none;">
+      <div class="form-group">
+        <label for="loginTelefono">Teléfono</label>
+        <input type="tel" id="loginTelefono" placeholder="Ej: 9999-9999">
+      </div>
+      
+      <div class="form-group">
+        <label for="loginPlaca">Placa de la moto</label>
+        <input type="text" id="loginPlaca" placeholder="Ej: ABC-1234">
+      </div>
+
+      <button class="btn" onclick="iniciarSesionAuth()">Iniciar sesión</button>
     </div>
 
-    <div class="form-group">
+    <div class="form-group" style="margin-top: 20px;">
       <label>¿Nuevo motorista?</label>
-      <button class="btn" onclick="mostrarRegistro()">Registrarse</button>
+      <button class="btn btn-secondary" onclick="mostrarRegistro()">Registrarse</button>
     </div>
-
-    <button class="btn" onclick="iniciarSesion()">Iniciar sesión</button>
   </div>
 
   <!-- Formulario de Registro -->
@@ -562,6 +586,68 @@
       document.getElementById('loginScreen').style.display = 'block';
     }
 
+    function cambiarMetodoLogin(metodo) {
+      if (metodo === 'id') {
+        document.getElementById('loginConID').style.display = 'block';
+        document.getElementById('loginConAuth').style.display = 'none';
+        document.getElementById('tabLoginID').style.background = '#2563eb';
+        document.getElementById('tabLoginID').style.color = 'white';
+        document.getElementById('tabLoginAuth').style.background = 'white';
+        document.getElementById('tabLoginAuth').style.color = '#2563eb';
+      } else {
+        document.getElementById('loginConID').style.display = 'none';
+        document.getElementById('loginConAuth').style.display = 'block';
+        document.getElementById('tabLoginID').style.background = 'white';
+        document.getElementById('tabLoginID').style.color = '#2563eb';
+        document.getElementById('tabLoginAuth').style.background = '#2563eb';
+        document.getElementById('tabLoginAuth').style.color = 'white';
+      }
+    }
+
+    async function iniciarSesionAuth() {
+      const telefono = document.getElementById('loginTelefono').value.trim();
+      const placa = document.getElementById('loginPlaca').value.trim();
+      
+      if (!telefono || !placa) {
+        alert('Por favor completa todos los campos');
+        return;
+      }
+
+      console.log('🔐 Autenticando motorista...');
+
+      try {
+        const resultado = await callBackend('autenticarMotorista', { telefono, placa });
+        
+        console.log('📦 Resultado autenticación:', resultado);
+        
+        if (resultado.success) {
+          // Guardar datos del motorista
+          motoristaID = resultado.motorista.id;
+          motoristaNombre = resultado.motorista.nombre;
+          
+          console.log('✅ Autenticado:', motoristaID, motoristaNombre);
+          
+          // Iniciar panel
+          document.getElementById('loginScreen').style.display = 'none';
+          document.getElementById('mainScreen').style.display = 'block';
+          document.getElementById('motoristaName').textContent = motoristaNombre;
+
+          iniciarRastreoUbicacion();
+          cargarViajesCercanos();
+          cargarViajeActual();
+
+          // Actualizar cada 10 segundos
+          intervalViajes = setInterval(cargarViajesCercanos, 10000);
+          intervalActualizacion = setInterval(cargarViajeActual, 5000);
+        } else {
+          alert(resultado.mensaje || 'Teléfono o placa incorrectos');
+        }
+      } catch (error) {
+        console.error('❌ Error:', error);
+        alert('Error al iniciar sesión: ' + error.message);
+      }
+    }
+
     async function registrarMotorista() {
       const nombre = document.getElementById('regNombre').value;
       const telefono = document.getElementById('regTelefono').value;
@@ -625,6 +711,9 @@
       intervalActualizacion = setInterval(cargarViajeActual, 5000);
     }
 
+    let intentosGPS = 0;
+    const MAX_INTENTOS_GPS = 3;
+
     function iniciarRastreoUbicacion() {
       if (!navigator.geolocation) {
         alert('Tu navegador no soporta geolocalización');
@@ -633,8 +722,8 @@
         return;
       }
 
-      console.log('🔄 Solicitando ubicación GPS...');
-      document.getElementById('gpsStatus').innerHTML = '<span style="font-size: 18px;">📡</span><span>Esperando GPS...</span>';
+      console.log('🔄 Solicitando ubicación GPS... (Intento ' + (intentosGPS + 1) + '/' + MAX_INTENTOS_GPS + ')');
+      document.getElementById('gpsStatus').innerHTML = '<span style="font-size: 18px;">📡</span><span>Buscando GPS...</span>';
 
       navigator.geolocation.watchPosition(
         function(position) {
@@ -644,6 +733,7 @@
           };
 
           console.log('✅ Ubicación obtenida:', ubicacionActual);
+          intentosGPS = 0; // Reset intentos al obtener ubicación exitosa
           
           // Actualizar indicador visual
           document.getElementById('gpsStatus').innerHTML = '<span style="font-size: 18px;">✅</span><span>GPS activo</span>';
@@ -676,26 +766,45 @@
               mensaje += 'Permisos denegados. Por favor, permite el acceso a tu ubicación.';
               document.getElementById('gpsStatus').innerHTML = '<span style="font-size: 18px;">🚫</span><span>Permiso denegado</span>';
               document.getElementById('gpsStatus').style.background = 'rgba(239, 68, 68, 0.3)';
+              alert(mensaje);
               break;
             case error.POSITION_UNAVAILABLE:
               mensaje += 'Ubicación no disponible.';
               document.getElementById('gpsStatus').innerHTML = '<span style="font-size: 18px;">⚠️</span><span>GPS no disponible</span>';
+              
+              // Reintentar
+              if (intentosGPS < MAX_INTENTOS_GPS) {
+                intentosGPS++;
+                console.log('🔄 Reintentando GPS en 3 segundos...');
+                setTimeout(iniciarRastreoUbicacion, 3000);
+              } else {
+                alert(mensaje);
+              }
               break;
             case error.TIMEOUT:
-              mensaje += 'Tiempo de espera agotado.';
-              document.getElementById('gpsStatus').innerHTML = '<span style="font-size: 18px;">⏱️</span><span>Timeout</span>';
+              mensaje += 'Tiempo de espera agotado. ';
+              document.getElementById('gpsStatus').innerHTML = '<span style="font-size: 18px;">⏱️</span><span>Reintentando...</span>';
+              
+              // Reintentar automáticamente con configuración más permisiva
+              if (intentosGPS < MAX_INTENTOS_GPS) {
+                intentosGPS++;
+                console.log('🔄 Reintentando GPS en 2 segundos... (Intento ' + intentosGPS + ')');
+                setTimeout(iniciarRastreoUbicacion, 2000);
+              } else {
+                mensaje += 'Intenta salir al aire libre o reiniciar la app.';
+                alert(mensaje);
+              }
               break;
             default:
               mensaje += error.message;
               document.getElementById('gpsStatus').innerHTML = '<span style="font-size: 18px;">❌</span><span>Error GPS</span>';
+              alert(mensaje);
           }
-          
-          alert(mensaje);
         },
         {
-          enableHighAccuracy: true,
-          maximumAge: 10000,
-          timeout: 5000
+          enableHighAccuracy: false, // false = más rápido, menos preciso
+          maximumAge: 30000, // Aceptar ubicaciones de hasta 30 segundos
+          timeout: 30000 // 30 segundos de timeout
         }
       );
     }
@@ -975,20 +1084,32 @@
     }
 
     async function cargarHistorial() {
+      console.log('📊 Cargando historial...');
+      console.log('📍 Motorista ID:', motoristaID);
+      
       try {
         const resultado = await callBackend('obtenerTodosViajes', { filtroEstado: 'Completado' });
         
+        console.log('📦 Respuesta viajes:', resultado);
+        
         if (resultado.success) {
-          const viajesMotorista = resultado.viajes.filter(v => v.motorista === motoristaNombre);
+          // Filtrar por el ID del motorista
+          const viajesMotorista = resultado.viajes.filter(v => v.motoristaID === motoristaID);
+          
+          console.log(`✅ ${viajesMotorista.length} viajes completados por este motorista`);
           
           let totalViajes = viajesMotorista.length;
           let totalIngresos = viajesMotorista.reduce((sum, v) => sum + parseFloat(v.tarifa || 0), 0);
           
           document.getElementById('statViajes').textContent = totalViajes;
           document.getElementById('statIngresos').textContent = totalIngresos.toFixed(2);
+          
+          console.log(`📊 Total viajes: ${totalViajes}, Ingresos: L ${totalIngresos.toFixed(2)}`);
+        } else {
+          console.error('❌ Error al obtener viajes:', resultado.error);
         }
       } catch (error) {
-        console.error('Error al cargar historial:', error);
+        console.error('❌ Error al cargar historial:', error);
       }
     }
 
