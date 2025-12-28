@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sin conexión - Mototaxis</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 500px;
+      width: 100%;
+      background: white;
+      border-radius: 20px;
+      padding: 50px 40px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    .icon {
+      font-size: 100px;
+      margin-bottom: 20px;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    h1 {
+      color: #333;
+      font-size: 28px;
+      margin-bottom: 15px;
+    }
+
+    p {
+      color: #666;
+      font-size: 16px;
+      line-height: 1.6;
+      margin-bottom: 30px;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 15px 40px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .status {
+      margin-top: 30px;
+      padding: 15px;
+      background: #f0f0f0;
+      border-radius: 10px;
+      font-size: 14px;
+      color: #666;
+    }
+
+    .online {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .offline {
+      background: #f8d7da;
+      color: #721c24;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">📡</div>
+    <h1>Sin conexión a internet</h1>
+    <p>Parece que no tienes conexión a internet en este momento. Por favor, verifica tu conexión y vuelve a intentarlo.</p>
+    
+    <button class="btn" onclick="location.reload()">
+      🔄 Reintentar
+    </button>
+
+    <div class="status" id="status">
+      Verificando conexión...
+    </div>
+  </div>
+
+  <script>
+    function updateStatus() {
+      const statusDiv = document.getElementById('status');
+      
+      if (navigator.onLine) {
+        statusDiv.textContent = '✅ Conexión restaurada';
+        statusDiv.className = 'status online';
+        setTimeout(() => {
+          location.reload();
+        }, 1000);
+      } else {
+        statusDiv.textContent = '❌ Sin conexión';
+        statusDiv.className = 'status offline';
+      }
+    }
+
+    // Verificar estado cada 3 segundos
+    setInterval(updateStatus, 3000);
+    updateStatus();
+
+    // Escuchar eventos de conexión
+    window.addEventListener('online', updateStatus);
+    window.addEventListener('offline', updateStatus);
+  </script>
+</body>
+</html>
