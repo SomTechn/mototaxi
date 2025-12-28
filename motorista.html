@@ -481,6 +481,10 @@
           <div class="status-dot"></div>
           <span id="motoristaName">Motorista</span>
         </div>
+        <div id="gpsStatus" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(255,255,255,0.2); border-radius: 8px; font-size: 14px; margin-left: 15px;">
+          <span style="font-size: 18px;">📡</span>
+          <span id="gpsText">Esperando GPS...</span>
+        </div>
       </div>
     </div>
 
@@ -624,8 +628,13 @@
     function iniciarRastreoUbicacion() {
       if (!navigator.geolocation) {
         alert('Tu navegador no soporta geolocalización');
+        console.error('❌ Geolocalización no disponible');
+        document.getElementById('gpsStatus').innerHTML = '<span style="font-size: 18px;">❌</span><span>GPS no disponible</span>';
         return;
       }
+
+      console.log('🔄 Solicitando ubicación GPS...');
+      document.getElementById('gpsStatus').innerHTML = '<span style="font-size: 18px;">📡</span><span>Esperando GPS...</span>';
 
       navigator.geolocation.watchPosition(
         function(position) {
@@ -634,17 +643,54 @@
             lng: position.coords.longitude
           };
 
+          console.log('✅ Ubicación obtenida:', ubicacionActual);
+          
+          // Actualizar indicador visual
+          document.getElementById('gpsStatus').innerHTML = '<span style="font-size: 18px;">✅</span><span>GPS activo</span>';
+          document.getElementById('gpsStatus').style.background = 'rgba(34, 197, 94, 0.3)';
+
           // Enviar ubicación al servidor
           callBackend('actualizarUbicacionMotorista', {
             motoristaID: motoristaID,
             lat: ubicacionActual.lat,
             lng: ubicacionActual.lng
+          }).then(resultado => {
+            if (resultado.success) {
+              console.log('✅ Ubicación actualizada en servidor');
+              
+              // Recargar viajes cercanos ahora que tenemos ubicación
+              cargarViajesCercanos();
+            } else {
+              console.error('❌ Error al actualizar ubicación:', resultado.error);
+            }
           }).catch(error => {
-            console.error('Error al actualizar ubicación:', error);
+            console.error('❌ Error al actualizar ubicación:', error);
           });
         },
         function(error) {
-          console.error('Error de geolocalización:', error);
+          console.error('❌ Error de geolocalización:', error);
+          
+          let mensaje = 'Error al obtener ubicación: ';
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              mensaje += 'Permisos denegados. Por favor, permite el acceso a tu ubicación.';
+              document.getElementById('gpsStatus').innerHTML = '<span style="font-size: 18px;">🚫</span><span>Permiso denegado</span>';
+              document.getElementById('gpsStatus').style.background = 'rgba(239, 68, 68, 0.3)';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              mensaje += 'Ubicación no disponible.';
+              document.getElementById('gpsStatus').innerHTML = '<span style="font-size: 18px;">⚠️</span><span>GPS no disponible</span>';
+              break;
+            case error.TIMEOUT:
+              mensaje += 'Tiempo de espera agotado.';
+              document.getElementById('gpsStatus').innerHTML = '<span style="font-size: 18px;">⏱️</span><span>Timeout</span>';
+              break;
+            default:
+              mensaje += error.message;
+              document.getElementById('gpsStatus').innerHTML = '<span style="font-size: 18px;">❌</span><span>Error GPS</span>';
+          }
+          
+          alert(mensaje);
         },
         {
           enableHighAccuracy: true,
@@ -655,22 +701,45 @@
     }
 
     async function cargarViajesCercanos() {
+      console.log('🔍 Cargando viajes cercanos...');
+      console.log('📍 Motorista ID:', motoristaID);
+      
       try {
         const resultado = await callBackend('obtenerViajesCercanos', { motoristaID: motoristaID, radioKm: 5 });
-        if (resultado.success) {
-          if (resultado.success) {
-            mostrarViajesCercanos(resultado.viajes);
-          }
-        } else {
-          const error = new Error(resultado.error);
-          
-          console.error('Error al cargar viajes:', error);
         
+        console.log('📦 Respuesta del servidor:', resultado);
+        
+        if (resultado.success) {
+          console.log(`✅ ${resultado.viajes.length} viajes encontrados`);
+          mostrarViajesCercanos(resultado.viajes);
+        } else {
+          console.error('❌ Error del servidor:', resultado.error || resultado.mensaje);
+          
+          // Mostrar mensaje más específico
+          if (resultado.mensaje && resultado.mensaje.includes('Ubicación no disponible')) {
+            document.getElementById('viajesCercanosList').innerHTML = `
+              <div class="empty-state">
+                <div class="empty-state-icon">📡</div>
+                <p style="color: #f59e0b;">Esperando ubicación GPS...</p>
+                <small style="color: #666; margin-top: 10px; display: block;">
+                  Asegúrate de permitir el acceso a tu ubicación
+                </small>
+              </div>
+            `;
+          }
         }
       } catch (error) {
+        console.error('❌ Error al cargar viajes:', error);
         
-          console.error('Error al cargar viajes:', error);
-        
+        document.getElementById('viajesCercanosList').innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">⚠️</div>
+            <p style="color: #ef4444;">Error de conexión</p>
+            <small style="color: #666; margin-top: 10px; display: block;">
+              ${error.message}
+            </small>
+          </div>
+        `;
       }
     }
 
