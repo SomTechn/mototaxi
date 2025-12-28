@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test de Conexión - Sistema Mototaxis</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background: #5568d3;
+    }
+    #result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 5px;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+    .success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+    h1 {
+      color: #333;
+    }
+    .status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔧 Diagnóstico del Sistema</h1>
+    
+    <div class="status info">
+      <strong>URL del Backend:</strong><br>
+      <span id="apiUrl">Cargando...</span>
+    </div>
+    
+    <h2>Pruebas de Conexión</h2>
+    
+    <button onclick="testConfigLoaded()">1. Verificar config.js</button>
+    <button onclick="testBackendConnection()">2. Probar Conexión Backend</button>
+    <button onclick="testObtenerEstadisticas()">3. Obtener Estadísticas</button>
+    <button onclick="testRegistrarMotorista()">4. Registrar Motorista (Test)</button>
+    
+    <div id="result"></div>
+  </div>
+
+  <script src="config.js"></script>
+  <script>
+    // Mostrar URL del API
+    document.getElementById('apiUrl').textContent = API_URL || 'NO DEFINIDO';
+    
+    function showResult(message, type = 'info') {
+      const resultDiv = document.getElementById('result');
+      resultDiv.className = type;
+      resultDiv.textContent = message;
+    }
+    
+    function testConfigLoaded() {
+      if (typeof API_URL === 'undefined') {
+        showResult('❌ ERROR: config.js no se cargó correctamente', 'error');
+        return;
+      }
+      
+      if (typeof callBackend === 'undefined') {
+        showResult('❌ ERROR: Función callBackend no está definida', 'error');
+        return;
+      }
+      
+      showResult(`✅ config.js cargado correctamente\n\nAPI_URL: ${API_URL}\ncallBackend: Función definida`, 'success');
+    }
+    
+    async function testBackendConnection() {
+      showResult('⏳ Probando conexión...', 'info');
+      
+      try {
+        // Construir URL de prueba
+        const url = new URL(API_URL);
+        url.searchParams.append('action', 'obtenerEstadisticas');
+        url.searchParams.append('params', JSON.stringify({}));
+        
+        showResult(`⏳ Conectando a:\n${url.toString()}\n\nEsperando respuesta...`, 'info');
+        
+        const response = await fetch(url.toString());
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        showResult(`✅ Conexión exitosa!\n\nRespuesta:\n${JSON.stringify(data, null, 2)}`, 'success');
+        
+      } catch (error) {
+        showResult(`❌ Error de conexión:\n\n${error.message}\n\nVerifica:\n1. Code.gs actualizado en Apps Script\n2. Web App re-desplegada\n3. URL correcta en config.js`, 'error');
+      }
+    }
+    
+    async function testObtenerEstadisticas() {
+      showResult('⏳ Obteniendo estadísticas...', 'info');
+      
+      try {
+        const resultado = await callBackend('obtenerEstadisticas', {});
+        
+        if (resultado.success) {
+          const stats = resultado.stats;
+          showResult(`✅ Estadísticas obtenidas:\n\n` +
+            `Total de viajes: ${stats.totalViajes}\n` +
+            `Pendientes: ${stats.viajesPendientes}\n` +
+            `Activos: ${stats.viajesAsignados}\n` +
+            `Completados: ${stats.viajesCompletados}\n` +
+            `Ingresos: L ${stats.ingresoTotal}\n` +
+            `Total motoristas: ${stats.totalMotoristas}\n` +
+            `Disponibles: ${stats.motoristasDisponibles}\n` +
+            `Ocupados: ${stats.motoristasOcupados}`, 'success');
+        } else {
+          showResult(`⚠️ Respuesta del servidor:\n\n${resultado.error || 'Sin mensaje de error'}`, 'error');
+        }
+        
+      } catch (error) {
+        showResult(`❌ Error:\n\n${error.message}`, 'error');
+      }
+    }
+    
+    async function testRegistrarMotorista() {
+      showResult('⏳ Registrando motorista de prueba...', 'info');
+      
+      try {
+        const datos = {
+          nombre: 'Test Motorista',
+          telefono: '9999-9999',
+          placa: 'TEST-123',
+          lat: 14.0723,
+          lng: -87.1921
+        };
+        
+        const resultado = await callBackend('registrarMotorista', datos);
+        
+        if (resultado.success) {
+          showResult(`✅ Motorista registrado!\n\nID: ${resultado.motoristaID}\n\nGuarda este ID para pruebas.`, 'success');
+        } else {
+          showResult(`⚠️ Error del servidor:\n\n${resultado.error || 'Sin mensaje'}`, 'error');
+        }
+        
+      } catch (error) {
+        showResult(`❌ Error:\n\n${error.message}`, 'error');
+      }
+    }
+    
+    // Auto-test al cargar
+    window.addEventListener('load', function() {
+      setTimeout(testConfigLoaded, 500);
+    });
+  </script>
+</body>
+</html>
