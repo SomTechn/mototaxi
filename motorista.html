@@ -464,13 +464,13 @@
     <div class="container">
       <!-- Tabs -->
       <div class="tabs">
-        <button class="tab active" onclick="cambiarTab('viajes')">
+        <button class="tab active" onclick="cambiarTab('viajes', event)">
           🔍 Viajes cercanos
         </button>
-        <button class="tab" onclick="cambiarTab('actual')">
+        <button class="tab" onclick="cambiarTab('actual', event)">
           🚀 Viaje actual
         </button>
-        <button class="tab" onclick="cambiarTab('historial')">
+        <button class="tab" onclick="cambiarTab('historial', event)">
           📊 Historial
         </button>
       </div>
@@ -882,12 +882,38 @@
       }
     }
 
-    function cambiarTab(tab) {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    async function cargarHistorial() {
+      try {
+        const resultado = await callBackend('obtenerTodosViajes', { filtroEstado: 'Completado' });
+        
+        if (resultado.success) {
+          const viajesMotorista = resultado.viajes.filter(v => v.motorista === motoristaNombre);
+          
+          let totalViajes = viajesMotorista.length;
+          let totalIngresos = viajesMotorista.reduce((sum, v) => sum + parseFloat(v.tarifa || 0), 0);
+          
+          document.getElementById('statViajes').textContent = totalViajes;
+          document.getElementById('statIngresos').textContent = totalIngresos.toFixed(2);
+        }
+      } catch (error) {
+        console.error('Error al cargar historial:', error);
+      }
+    }
+
+    function cambiarTab(tab, event) {
+      // Si no se pasa event, buscar el botón activo
+      if (event) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        event.target.classList.add('active');
+      }
       
-      event.target.classList.add('active');
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+      
+      // Cargar datos del tab
+      if (tab === 'Historial') {
+        cargarHistorial();
+      }
     }
   </script>
 </body>
