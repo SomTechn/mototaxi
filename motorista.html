@@ -687,7 +687,7 @@
       }
     }
 
-    function iniciarSesion() {
+    async function iniciarSesion() {
       const id = document.getElementById('loginID').value.trim();
       
       if (!id) {
@@ -695,20 +695,61 @@
         return;
       }
 
-      motoristaID = id;
-      motoristaNombre = id.split('-')[0];
-      
-      document.getElementById('loginScreen').style.display = 'none';
-      document.getElementById('mainScreen').style.display = 'block';
-      document.getElementById('motoristaName').textContent = motoristaNombre;
+      console.log('🔐 Validando motorista ID:', id);
 
-      iniciarRastreoUbicacion();
-      cargarViajesCercanos();
-      cargarViajeActual();
+      // Validar formato del ID
+      if (!id.includes('-')) {
+        alert('ID inválido. Debe tener el formato: MOT-1234567890-123\n\nSi no recuerdas tu ID completo, usa la opción "Con Teléfono"');
+        return;
+      }
 
-      // Actualizar cada 10 segundos
-      intervalViajes = setInterval(cargarViajesCercanos, 10000);
-      intervalActualizacion = setInterval(cargarViajeActual, 5000);
+      try {
+        // Validar que el motorista existe en el backend
+        const resultado = await callBackend('obtenerTodosMotoristas', {});
+        
+        if (resultado.success) {
+          const motorista = resultado.motoristas.find(m => m.id === id);
+          
+          if (motorista) {
+            motoristaID = motorista.id;
+            motoristaNombre = motorista.nombre;
+            
+            console.log('✅ Motorista encontrado:', motoristaID, motoristaNombre);
+            
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('mainScreen').style.display = 'block';
+            document.getElementById('motoristaName').textContent = motoristaNombre;
+
+            iniciarRastreoUbicacion();
+            cargarViajesCercanos();
+            cargarViajeActual();
+
+            // Actualizar cada 10 segundos
+            intervalViajes = setInterval(cargarViajesCercanos, 10000);
+            intervalActualizacion = setInterval(cargarViajeActual, 5000);
+          } else {
+            alert('ID no encontrado. Verifica que el ID sea correcto o usa la opción "Con Teléfono"');
+          }
+        } else {
+          // Si falla la validación, intenta de todos modos (modo legacy)
+          motoristaID = id;
+          motoristaNombre = id.split('-')[0];
+          
+          document.getElementById('loginScreen').style.display = 'none';
+          document.getElementById('mainScreen').style.display = 'block';
+          document.getElementById('motoristaName').textContent = motoristaNombre;
+
+          iniciarRastreoUbicacion();
+          cargarViajesCercanos();
+          cargarViajeActual();
+
+          intervalViajes = setInterval(cargarViajesCercanos, 10000);
+          intervalActualizacion = setInterval(cargarViajeActual, 5000);
+        }
+      } catch (error) {
+        console.error('❌ Error al validar motorista:', error);
+        alert('Error al iniciar sesión. Intenta con la opción "Con Teléfono"');
+      }
     }
 
     let intentosGPS = 0;
@@ -1148,25 +1189,30 @@
       try {
         const resultado = await callBackend('obtenerTodosViajes', { filtroEstado: 'Completado' });
         
-        console.log('📦 Respuesta viajes completos:', resultado);
+        console.log('📦 Respuesta COMPLETA:', JSON.stringify(resultado, null, 2));
         
         if (resultado.success) {
-          console.log('🔍 Total viajes completados:', resultado.viajes.length);
+          console.log('🔍 Total viajes en respuesta:', resultado.viajes.length);
           
-          // Debug: Ver todos los motoristas
-          const todosMotoristas = resultado.viajes.map(v => v.motoristaID);
-          console.log('🚗 IDs de motoristas:', todosMotoristas);
+          // Mostrar TODOS los viajes
+          resultado.viajes.forEach((v, index) => {
+            console.log(`Viaje ${index + 1}:`, {
+              id: v.id,
+              motoristaID: v.motoristaID,
+              motorista: v.motorista,
+              estado: v.estado,
+              tarifa: v.tarifa
+            });
+          });
           
           // Filtrar por el ID del motorista
           const viajesMotorista = resultado.viajes.filter(v => {
-            console.log(`Comparando: "${v.motoristaID}" === "${motoristaID}"`, v.motoristaID === motoristaID);
-            return v.motoristaID === motoristaID;
+            const coincide = v.motoristaID === motoristaID;
+            console.log(`¿"${v.motoristaID}" === "${motoristaID}"? ${coincide}`);
+            return coincide;
           });
           
-          console.log(`✅ ${viajesMotorista.length} viajes completados por motorista ${motoristaID}`);
-          
-          // Debug temporal con alert
-          alert(`Debug Historial:\nMotorista ID: ${motoristaID}\nTotal completados: ${resultado.viajes.length}\nDe este motorista: ${viajesMotorista.length}`);
+          console.log(`✅ ${viajesMotorista.length} viajes filtrados para motorista ${motoristaID}`);
           
           let totalViajes = viajesMotorista.length;
           let totalIngresos = viajesMotorista.reduce((sum, v) => sum + parseFloat(v.tarifa || 0), 0);
@@ -1174,12 +1220,27 @@
           document.getElementById('statViajes').textContent = totalViajes;
           document.getElementById('statIngresos').textContent = totalIngresos.toFixed(2);
           
+          // Alert con TODA la info
+          const mensaje = `Debug Historial Completo:
+          
+Mi ID: "${motoristaID}"
+Total viajes completados en sistema: ${resultado.viajes.length}
+Viajes que son míos: ${totalViajes}
+Ingresos: L ${totalIngresos.toFixed(2)}
+
+IDs de motoristas en viajes:
+${resultado.viajes.map((v, i) => `${i+1}. "${v.motoristaID}" (${v.motorista})`).join('\n')}`;
+          
+          alert(mensaje);
+          
           console.log(`📊 Total viajes: ${totalViajes}, Ingresos: L ${totalIngresos.toFixed(2)}`);
         } else {
           console.error('❌ Error al obtener viajes:', resultado.error);
+          alert('Error: ' + resultado.error);
         }
       } catch (error) {
         console.error('❌ Error al cargar historial:', error);
+        alert('Error al cargar historial: ' + error.message);
       }
     }
 
