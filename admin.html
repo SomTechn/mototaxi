@@ -780,7 +780,7 @@
       viajeAsignar = null;
     }
 
-    function confirmarAsignacion() {
+    async function confirmarAsignacion() {
       const motoristaID = document.getElementById('selectMotorista').value;
       
       if (!motoristaID) {
@@ -794,7 +794,7 @@
       }
 
       try {
-        const resultado = await callBackend('asignarViajeManual', { viajeAsignar.id, motoristaID });
+        const resultado = await callBackend('asignarViajeManual', { viajeID: viajeAsignar.id, motoristaID: motoristaID });
         if (resultado.success) {
           if (resultado.success) {
             alert('Viaje asignado exitosamente');
