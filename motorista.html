@@ -631,7 +631,7 @@
 
     async function cargarViajesCercanos() {
       try {
-        const resultado = await callBackend('obtenerViajesCercanos', { motoristaID, 5 });
+        const resultado = await callBackend('obtenerViajesCercanos', { motoristaID: motoristaID, radioKm: 5 });
         if (resultado.success) {
           if (resultado.success) {
             mostrarViajesCercanos(resultado.viajes);
