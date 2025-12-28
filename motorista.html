@@ -979,6 +979,9 @@
         <div class="viaje-actual">
           <h3>Viaje en curso</h3>
           
+          <!-- Mapa integrado -->
+          <div id="mapaViajeActual" style="height: 250px; border-radius: 10px; margin-bottom: 15px; border: 2px solid #e0e0e0;"></div>
+          
           <div class="viaje-info" style="margin-bottom: 20px;">
             <div class="info-row">
               <span class="info-icon">👤</span>
@@ -1039,12 +1042,19 @@
             ` : ''}
           </div>
 
-          <div style="display: flex; gap: 10px;">
-            <a href="https://www.google.com/maps/dir/?api=1&origin=${viaje.origenLat},${viaje.origenLng}&destination=${viaje.destinoLat},${viaje.destinoLng}" 
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <a href="https://www.google.com/maps/dir/?api=1&destination=${viaje.origenLat},${viaje.origenLng}" 
                target="_blank" 
                class="btn" 
-               style="text-decoration: none; text-align: center;">
-              🗺️ Abrir en Google Maps
+               style="text-decoration: none; text-align: center; background: #10b981;">
+              📍 Ir a punto de recogida
+            </a>
+            
+            <a href="https://www.google.com/maps/dir/?api=1&destination=${viaje.destinoLat},${viaje.destinoLng}" 
+               target="_blank" 
+               class="btn" 
+               style="text-decoration: none; text-align: center; background: #3b82f6;">
+              🎯 Ir al destino
             </a>
           </div>
 
@@ -1053,6 +1063,54 @@
           </button>
         </div>
       `;
+      
+      // Inicializar mapa después de que el HTML se haya renderizado
+      setTimeout(() => {
+        try {
+          const mapa = L.map('mapaViajeActual').setView([viaje.origenLat, viaje.origenLng], 13);
+          
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+          }).addTo(mapa);
+          
+          // Marcador de origen (verde)
+          L.marker([viaje.origenLat, viaje.origenLng], {
+            icon: L.divIcon({
+              className: 'custom-marker',
+              html: '<div style="background: #10b981; color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">A</div>'
+            })
+          }).addTo(mapa).bindPopup('Punto de recogida');
+          
+          // Marcador de destino (azul)
+          L.marker([viaje.destinoLat, viaje.destinoLng], {
+            icon: L.divIcon({
+              className: 'custom-marker',
+              html: '<div style="background: #3b82f6; color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">B</div>'
+            })
+          }).addTo(mapa).bindPopup('Destino');
+          
+          // Dibujar línea entre origen y destino
+          L.polyline([
+            [viaje.origenLat, viaje.origenLng],
+            [viaje.destinoLat, viaje.destinoLng]
+          ], {
+            color: '#667eea',
+            weight: 4,
+            opacity: 0.7,
+            dashArray: '10, 10'
+          }).addTo(mapa);
+          
+          // Ajustar vista para mostrar ambos puntos
+          const bounds = L.latLngBounds([
+            [viaje.origenLat, viaje.origenLng],
+            [viaje.destinoLat, viaje.destinoLng]
+          ]);
+          mapa.fitBounds(bounds, { padding: [50, 50] });
+          
+        } catch (error) {
+          console.error('Error al inicializar mapa:', error);
+        }
+      }, 100);
     }
 
     async function completarViaje(viajeID) {
@@ -1090,13 +1148,25 @@
       try {
         const resultado = await callBackend('obtenerTodosViajes', { filtroEstado: 'Completado' });
         
-        console.log('📦 Respuesta viajes:', resultado);
+        console.log('📦 Respuesta viajes completos:', resultado);
         
         if (resultado.success) {
-          // Filtrar por el ID del motorista
-          const viajesMotorista = resultado.viajes.filter(v => v.motoristaID === motoristaID);
+          console.log('🔍 Total viajes completados:', resultado.viajes.length);
           
-          console.log(`✅ ${viajesMotorista.length} viajes completados por este motorista`);
+          // Debug: Ver todos los motoristas
+          const todosMotoristas = resultado.viajes.map(v => v.motoristaID);
+          console.log('🚗 IDs de motoristas:', todosMotoristas);
+          
+          // Filtrar por el ID del motorista
+          const viajesMotorista = resultado.viajes.filter(v => {
+            console.log(`Comparando: "${v.motoristaID}" === "${motoristaID}"`, v.motoristaID === motoristaID);
+            return v.motoristaID === motoristaID;
+          });
+          
+          console.log(`✅ ${viajesMotorista.length} viajes completados por motorista ${motoristaID}`);
+          
+          // Debug temporal con alert
+          alert(`Debug Historial:\nMotorista ID: ${motoristaID}\nTotal completados: ${resultado.viajes.length}\nDe este motorista: ${viajesMotorista.length}`);
           
           let totalViajes = viajesMotorista.length;
           let totalIngresos = viajesMotorista.reduce((sum, v) => sum + parseFloat(v.tarifa || 0), 0);
