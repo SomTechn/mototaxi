@@ -716,13 +716,13 @@
       `).join('');
     }
 
-    function aceptarViaje(viajeID) {
+    async function aceptarViaje(viajeID) {
       if (!confirm('¿Confirmas que deseas aceptar este viaje?')) {
         return;
       }
 
       try {
-        const resultado = await callBackend('aceptarViaje', { viajeID, motoristaID });
+        const resultado = await callBackend('aceptarViaje', { viajeID: viajeID, motoristaID: motoristaID });
         if (resultado.success) {
           if (resultado.success) {
             alert('Viaje aceptado exitosamente');
@@ -852,13 +852,13 @@
       `;
     }
 
-    function completarViaje(viajeID) {
+    async function completarViaje(viajeID) {
       if (!confirm('¿Confirmas que el viaje ha sido completado?')) {
         return;
       }
 
       try {
-        const resultado = await callBackend('completarViaje', { viajeID, motoristaID });
+        const resultado = await callBackend('completarViaje', { viajeID: viajeID, motoristaID: motoristaID });
         if (resultado.success) {
           if (resultado.success) {
             alert('Viaje completado exitosamente');
