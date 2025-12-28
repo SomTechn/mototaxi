@@ -4,6 +4,29 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Motorista - Mototaxis</title>
+  
+  <!-- PWA Meta Tags -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mototaxis">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="description" content="Panel para motoristas - Sistema de gestión de viajes en mototaxi">
+  
+  <!-- Manifest -->
+  <link rel="manifest" href="manifest.json">
+  
+  <!-- Iconos para PWA -->
+  <link rel="apple-touch-icon" href="icon-152.png">
+  <link rel="apple-touch-icon" sizes="72x72" href="icon-72.png">
+  <link rel="apple-touch-icon" sizes="96x96" href="icon-96.png">
+  <link rel="apple-touch-icon" sizes="128x128" href="icon-128.png">
+  <link rel="apple-touch-icon" sizes="144x144" href="icon-144.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="icon-152.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="icon-96.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="icon-72.png">
+  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     * {
@@ -913,6 +936,138 @@
       // Cargar datos del tab
       if (tab === 'Historial') {
         cargarHistorial();
+      }
+    }
+  </script>
+
+  <!-- ============================================ -->
+  <!-- SERVICE WORKER Y PWA -->
+  <!-- ============================================ -->
+  <script>
+    // Registrar Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/mototaxi/sw.js')
+          .then(registration => {
+            console.log('✅ Service Worker registrado:', registration.scope);
+          })
+          .catch(error => {
+            console.error('❌ Error al registrar Service Worker:', error);
+          });
+      });
+    }
+
+    // Banner de instalación PWA
+    let deferredPrompt;
+    
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      mostrarBannerInstalacion();
+    });
+
+    function mostrarBannerInstalacion() {
+      // No mostrar si ya está instalado
+      if (window.matchMedia('(display-mode: standalone)').matches) {
+        return;
+      }
+
+      const banner = document.createElement('div');
+      banner.id = 'install-banner';
+      banner.style.cssText = 'position:fixed;bottom:20px;left:20px;right:20px;background:white;padding:20px;border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,0.3);z-index:9999;display:flex;align-items:center;justify-content:space-between;gap:15px;animation:slideUp 0.3s ease-out';
+      
+      banner.innerHTML = `
+        <div style="flex:1">
+          <strong style="display:block;margin-bottom:5px;color:#333;font-size:16px">📱 Instalar app</strong>
+          <span style="font-size:14px;color:#666">Úsala como una app nativa sin navegador</span>
+        </div>
+        <button id="btn-instalar" style="background:#2563eb;color:white;border:none;padding:12px 24px;border-radius:8px;font-weight:600;cursor:pointer;font-size:15px;white-space:nowrap">Instalar</button>
+        <button id="btn-cerrar" style="background:#f0f0f0;color:#666;border:none;padding:12px 16px;border-radius:8px;cursor:pointer;font-size:18px;line-height:1">×</button>
+      `;
+      
+      // Agregar animación
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes slideUp {
+          from {
+            transform: translateY(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+        #btn-instalar:hover {
+          background: #1d4ed8;
+        }
+        #btn-cerrar:hover {
+          background: #e0e0e0;
+        }
+      `;
+      document.head.appendChild(style);
+      document.body.appendChild(banner);
+
+      // Event listeners
+      document.getElementById('btn-instalar').addEventListener('click', instalarApp);
+      document.getElementById('btn-cerrar').addEventListener('click', cerrarBanner);
+    }
+
+    function instalarApp() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        
+        deferredPrompt.userChoice.then(choiceResult => {
+          if (choiceResult.outcome === 'accepted') {
+            console.log('✅ Usuario aceptó instalar la app');
+          } else {
+            console.log('❌ Usuario canceló la instalación');
+          }
+          deferredPrompt = null;
+          cerrarBanner();
+        });
+      }
+    }
+
+    function cerrarBanner() {
+      const banner = document.getElementById('install-banner');
+      if (banner) {
+        banner.style.animation = 'slideUp 0.3s ease-out reverse';
+        setTimeout(() => banner.remove(), 300);
+      }
+    }
+
+    // Detectar cuando la app se instala
+    window.addEventListener('appinstalled', () => {
+      console.log('🎉 App instalada exitosamente');
+      cerrarBanner();
+      
+      // Opcional: Mostrar mensaje de éxito
+      setTimeout(() => {
+        if (typeof alert !== 'undefined') {
+          alert('¡App instalada! Ahora puedes usarla desde tu pantalla de inicio.');
+        }
+      }, 1000);
+    });
+
+    // Detectar si ya está ejecutándose como PWA
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      console.log('✅ Ejecutándose como PWA instalada');
+    }
+
+    // Solicitar permisos de notificaciones (para motoristas)
+    if ('Notification' in window && navigator.serviceWorker) {
+      if (Notification.permission === 'default') {
+        // Esperar a que el motorista inicie sesión
+        setTimeout(() => {
+          if (motoristaID) {
+            Notification.requestPermission().then(permission => {
+              if (permission === 'granted') {
+                console.log('✅ Notificaciones activadas');
+              }
+            });
+          }
+        }, 5000);
       }
     }
   </script>
