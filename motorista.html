@@ -1191,9 +1191,20 @@
       console.log('📍 Mi ID limpio:', miIDLimpio);
       
       try {
-        const resultado = await callBackend('obtenerTodosViajes', { filtroEstado: 'Completado' });
+        // PRUEBA 1: Sin filtro de estado
+        console.log('🔍 Obteniendo TODOS los viajes (sin filtro)...');
+        const resultadoTodos = await callBackend('obtenerTodosViajes', {});
         
-        console.log('📦 Respuesta COMPLETA:', JSON.stringify(resultado, null, 2));
+        console.log('📦 TODOS los viajes:', resultadoTodos);
+        
+        // PRUEBA 2: Con filtro "Completado"
+        console.log('🔍 Obteniendo viajes Completados...');
+        const resultadoCompletados = await callBackend('obtenerTodosViajes', { filtroEstado: 'Completado' });
+        
+        console.log('📦 Viajes completados:', resultadoCompletados);
+        
+        // Usar los completados si existe, sino todos
+        const resultado = resultadoCompletados.success ? resultadoCompletados : resultadoTodos;
         
         if (resultado.success) {
           console.log('🔍 Total viajes en respuesta:', resultado.viajes.length);
@@ -1225,21 +1236,35 @@
           document.getElementById('statViajes').textContent = totalViajes;
           document.getElementById('statIngresos').textContent = totalIngresos.toFixed(2);
           
-          // Alert con TODA la info
-          const mensaje = `Debug Historial Completo:
+          // Alert MEGA detallado
+          const todosIDs = resultado.viajes.map(v => v.motoristaID).join(', ');
+          const todosEstados = resultado.viajes.map(v => v.estado).join(', ');
           
-Mi ID: "${miIDLimpio}"
-Total viajes completados en sistema: ${resultado.viajes.length}
-Viajes que son míos: ${totalViajes}
-Ingresos: L ${totalIngresos.toFixed(2)}
+          const mensaje = `🔍 DEBUG HISTORIAL COMPLETO:
 
-IDs de motoristas en viajes:
-${resultado.viajes.map((v, i) => `${i+1}. "${v.motoristaID}" (${v.motorista}) - Tarifa: L${v.tarifa}`).join('\n')}
+MI ID: "${miIDLimpio}"
+Longitud: ${miIDLimpio.length} caracteres
 
-Comparaciones:
+PRUEBA SIN FILTRO:
+Total viajes: ${resultadoTodos.success ? resultadoTodos.viajes.length : 0}
+
+PRUEBA CON FILTRO "Completado":
+Total viajes: ${resultadoCompletados.success ? resultadoCompletados.viajes.length : 0}
+
+VIAJES QUE SON MÍOS: ${totalViajes}
+INGRESOS: L ${totalIngresos.toFixed(2)}
+
+TODOS LOS IDS: ${todosIDs}
+TODOS LOS ESTADOS: ${todosEstados}
+
+DETALLE DE CADA VIAJE:
 ${resultado.viajes.map((v, i) => {
   const vID = v.motoristaID ? v.motoristaID.toString().trim() : '';
-  return `${i+1}. "${vID}" === "${miIDLimpio}" ? ${vID === miIDLimpio}`;
+  const match = vID === miIDLimpio;
+  return `${i+1}. ID:"${vID}" (${vID.length} chars)
+   Estado:"${v.estado}"
+   Tarifa:L${v.tarifa}
+   ¿Coincide? ${match}`;
 }).join('\n')}`;
           
           alert(mensaje);
@@ -1247,11 +1272,11 @@ ${resultado.viajes.map((v, i) => {
           console.log(`📊 Total viajes: ${totalViajes}, Ingresos: L ${totalIngresos.toFixed(2)}`);
         } else {
           console.error('❌ Error al obtener viajes:', resultado.error);
-          alert('Error: ' + resultado.error);
+          alert('ERROR: ' + resultado.error);
         }
       } catch (error) {
         console.error('❌ Error al cargar historial:', error);
-        alert('Error al cargar historial: ' + error.message);
+        alert('EXCEPCIÓN: ' + error.message);
       }
     }
 
