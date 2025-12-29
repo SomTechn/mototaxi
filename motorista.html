@@ -1186,6 +1186,10 @@
       console.log('📊 Cargando historial...');
       console.log('📍 Motorista ID:', motoristaID);
       
+      // Normalizar el ID (quitar espacios)
+      const miIDLimpio = motoristaID.toString().trim();
+      console.log('📍 Mi ID limpio:', miIDLimpio);
+      
       try {
         const resultado = await callBackend('obtenerTodosViajes', { filtroEstado: 'Completado' });
         
@@ -1205,14 +1209,15 @@
             });
           });
           
-          // Filtrar por el ID del motorista
+          // Filtrar por el ID del motorista (normalizando ambos)
           const viajesMotorista = resultado.viajes.filter(v => {
-            const coincide = v.motoristaID === motoristaID;
-            console.log(`¿"${v.motoristaID}" === "${motoristaID}"? ${coincide}`);
+            const viajeIDLimpio = v.motoristaID ? v.motoristaID.toString().trim() : '';
+            const coincide = viajeIDLimpio === miIDLimpio;
+            console.log(`¿"${viajeIDLimpio}" === "${miIDLimpio}"? ${coincide}`);
             return coincide;
           });
           
-          console.log(`✅ ${viajesMotorista.length} viajes filtrados para motorista ${motoristaID}`);
+          console.log(`✅ ${viajesMotorista.length} viajes filtrados para motorista ${miIDLimpio}`);
           
           let totalViajes = viajesMotorista.length;
           let totalIngresos = viajesMotorista.reduce((sum, v) => sum + parseFloat(v.tarifa || 0), 0);
@@ -1223,13 +1228,19 @@
           // Alert con TODA la info
           const mensaje = `Debug Historial Completo:
           
-Mi ID: "${motoristaID}"
+Mi ID: "${miIDLimpio}"
 Total viajes completados en sistema: ${resultado.viajes.length}
 Viajes que son míos: ${totalViajes}
 Ingresos: L ${totalIngresos.toFixed(2)}
 
 IDs de motoristas en viajes:
-${resultado.viajes.map((v, i) => `${i+1}. "${v.motoristaID}" (${v.motorista})`).join('\n')}`;
+${resultado.viajes.map((v, i) => `${i+1}. "${v.motoristaID}" (${v.motorista}) - Tarifa: L${v.tarifa}`).join('\n')}
+
+Comparaciones:
+${resultado.viajes.map((v, i) => {
+  const vID = v.motoristaID ? v.motoristaID.toString().trim() : '';
+  return `${i+1}. "${vID}" === "${miIDLimpio}" ? ${vID === miIDLimpio}`;
+}).join('\n')}`;
           
           alert(mensaje);
           
