@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prueba Backend - Historial</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .test-box {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      margin: 20px 0;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 5px;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+    pre {
+      background: #f0f0f0;
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .error {
+      color: red;
+    }
+    .success {
+      color: green;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 Prueba de Backend - Historial</h1>
+  
+  <div class="test-box">
+    <h3>Configuración</h3>
+    <label>URL del backend:</label>
+    <input type="text" id="backendURL" style="width: 100%; padding: 8px; margin: 10px 0;" 
+           placeholder="https://script.google.com/macros/s/...">
+    
+    <label>ID del Motorista:</label>
+    <input type="text" id="motoristaID" value="MOT001" style="width: 100%; padding: 8px; margin: 10px 0;">
+  </div>
+  
+  <div class="test-box">
+    <h3>Pruebas</h3>
+    <button onclick="probarBackend()">1. Probar conexión</button>
+    <button onclick="obtenerTodosViajes()">2. Obtener TODOS los viajes</button>
+    <button onclick="obtenerCompletados()">3. Obtener solo Completados</button>
+    <button onclick="filtrarPorMotorista()">4. Filtrar por motorista</button>
+  </div>
+  
+  <div class="test-box">
+    <h3>Resultados:</h3>
+    <div id="resultado"></div>
+  </div>
+
+  <script>
+    const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzhm8H4Hap1lvsiujDqaMNOlMtCZnoq-pLIAUK4kfwZQl80tSCzsyqldbWPMBfwhhoD_A/exec';
+    
+    document.getElementById('backendURL').value = BACKEND_URL;
+    
+    function mostrarResultado(titulo, data, esError = false) {
+      const div = document.getElementById('resultado');
+      const clase = esError ? 'error' : 'success';
+      div.innerHTML = `
+        <h4 class="${clase}">${titulo}</h4>
+        <pre>${JSON.stringify(data, null, 2)}</pre>
+      `;
+    }
+    
+    async function llamarBackend(action, params = {}) {
+      const url = document.getElementById('backendURL').value;
+      const urlCompleta = `${url}?action=${action}&${new URLSearchParams(params)}`;
+      
+      console.log('Llamando:', urlCompleta);
+      
+      try {
+        const response = await fetch(urlCompleta);
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    }
+    
+    async function probarBackend() {
+      mostrarResultado('⏳ Probando conexión...', {});
+      const resultado = await llamarBackend('test');
+      
+      if (resultado.success) {
+        mostrarResultado('✅ Backend funcionando correctamente', resultado);
+      } else {
+        mostrarResultado('❌ Error de conexión', resultado, true);
+      }
+    }
+    
+    async function obtenerTodosViajes() {
+      mostrarResultado('⏳ Obteniendo TODOS los viajes...', {});
+      const resultado = await llamarBackend('obtenerTodosViajes');
+      
+      if (resultado.success) {
+        mostrarResultado(
+          `✅ ${resultado.viajes.length} viajes encontrados`,
+          {
+            total: resultado.viajes.length,
+            viajes: resultado.viajes,
+            estados: resultado.viajes.map(v => v.estado),
+            motoristas: resultado.viajes.map(v => v.motoristaID)
+          }
+        );
+      } else {
+        mostrarResultado('❌ Error', resultado, true);
+      }
+    }
+    
+    async function obtenerCompletados() {
+      mostrarResultado('⏳ Obteniendo viajes Completados...', {});
+      const resultado = await llamarBackend('obtenerTodosViajes', { filtroEstado: 'Completado' });
+      
+      if (resultado.success) {
+        mostrarResultado(
+          `✅ ${resultado.viajes.length} viajes completados`,
+          {
+            total: resultado.viajes.length,
+            viajes: resultado.viajes,
+            motoristas: resultado.viajes.map(v => ({
+              id: v.motoristaID,
+              nombre: v.motorista,
+              tarifa: v.tarifa
+            }))
+          }
+        );
+      } else {
+        mostrarResultado('❌ Error', resultado, true);
+      }
+    }
+    
+    async function filtrarPorMotorista() {
+      const motoristaID = document.getElementById('motoristaID').value.trim();
+      
+      mostrarResultado('⏳ Filtrando por motorista ' + motoristaID + '...', {});
+      
+      const resultado = await llamarBackend('obtenerTodosViajes', { filtroEstado: 'Completado' });
+      
+      if (resultado.success) {
+        // Filtrar
+        const viajesMotorista = resultado.viajes.filter(v => {
+          const vID = v.motoristaID ? v.motoristaID.toString().trim() : '';
+          return vID === motoristaID;
+        });
+        
+        const totalIngresos = viajesMotorista.reduce((sum, v) => sum + parseFloat(v.tarifa || 0), 0);
+        
+        mostrarResultado(
+          `✅ ${viajesMotorista.length} viajes del motorista ${motoristaID}`,
+          {
+            motoristaID: motoristaID,
+            totalViajes: viajesMotorista.length,
+            totalIngresos: totalIngresos.toFixed(2),
+            viajes: viajesMotorista,
+            todosLosMotoristas: resultado.viajes.map(v => v.motoristaID),
+            comparaciones: resultado.viajes.map(v => ({
+              viajeID: v.id,
+              motoristaEnViaje: v.motoristaID,
+              buscando: motoristaID,
+              coincide: v.motoristaID === motoristaID
+            }))
+          }
+        );
+      } else {
+        mostrarResultado('❌ Error', resultado, true);
+      }
+    }
+  </script>
+</body>
+</html>
